@@ -28,9 +28,9 @@ app.get("/firebase-config", (req, res) => {
 });
 
 // ✅ `index.html`을 제공하기 위한 정적 파일 서빙
-app.use(express.static(path.join(__dirname, "..")));
+app.use(express.static(path.join(__dirname, "public"))); // public 디렉토리 설정
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "..", "index.html"));
+    res.sendFile(path.join(__dirname, "public", "index.html")); // index.html 위치
 });
 
 // ✅ 서버 실행

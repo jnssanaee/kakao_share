@@ -26,7 +26,7 @@
     <figure class="drop-box" id="dropBox">
         <p class="txt">Drop Image Here<br>(1:1 썸네일 이미지)</p>
         <button type="button" class="btn btn-outline-secondary btn-sm" id="btnFile">파일첨부</button>
-        <input type="file" id="fileInput" style="display:none;">
+        <input type="file" id="fileInput" style="display:none;" accept="image/*">
         <button type="button" class="close" aria-label="Close" style="display:none;">
             <span aria-hidden="true">&times;</span>
         </button>
@@ -64,7 +64,7 @@
     // ✅ Firebase 설정 정보를 백엔드에서 가져오기
     async function getFirebaseConfig() {
         try {
-            const response = await fetch("http://localhost:3000/firebase-config");
+            const response = await fetch("./firebase-config");
             const config = await response.json();
             firebase.initializeApp(config);
         } catch (error) {
@@ -90,7 +90,9 @@
         }
 
         $('#btnFile').on('click', function() {
-            $('#fileInput').click();
+            const fileInput = $('#fileInput');
+            fileInput.focus(); // 모바일 브라우저의 클릭 문제 해결
+            fileInput.click();
         });
 
         $('#fileInput').on('change', function (event) {
