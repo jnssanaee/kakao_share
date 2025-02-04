@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">
+    <title>kakaotalk share</title>
+    <link rel="icon" href="./resource/images/icon.png" sizes="32x32">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <link rel="stylesheet" href="./resource/css/style.css">
+    <script src="https://developers.kakao.com/sdk/js/kakao.min.js"></script>
+</head>
+<body>
+<div class="area_btn">
+    <button type="button" id="btn_share" class="btn btn-outline-secondary btn-sm">공유하기</button>
+</div>
+<div id="wrap">
+    <figure class="drop-box" id="dropBox">
+        <p class="txt">Drop Image Here<br>(1:1 썸네일 이미지)</p>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnFile">파일첨부</button>
+        <input type="file" id="fileInput" style="display:none;">
+        <button type="button" class="close" aria-label="Close" style="display:none;">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </figure>
+    <p class="tit">
+        <input class="form-control" id="input" type="text" placeholder="제목 입력" title="제목 입력">
+    </p>
+    <div class="textarea">
+        <textarea class="form-control" id="dynamicTextarea" rows="3" placeholder="내용 입력" title="내용 입력"></textarea>
+    </div>
+    <button type="button" class="link" id="dynamicButton"></button>
+</div>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.12.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.12.1/firebase-storage-compat.js"></script>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    function adjustHeight() {
+        const textarea = document.getElementById('dynamicTextarea');
+        textarea.style.height = 'auto'; // 높이 초기화
+        const scrollHeight = textarea.scrollHeight;
+        textarea.style.height = `${scrollHeight}px`;
+    }
+
+    // textarea 요소 선택
+    const textarea = document.getElementById('dynamicTextarea');
+
+    // 초기 높이 설정
+    adjustHeight();
+
+    // input 이벤트 리스너 추가
+    textarea.addEventListener('input', adjustHeight);
+
+    // ✅ Firebase 설정 정보를 백엔드에서 가져오기
+    async function getFirebaseConfig() {
+        try {
+            const response = await fetch("http://localhost:3000/firebase-config");
+            const config = await response.json();
+            firebase.initializeApp(config);
+        } catch (error) {
+            console.error("Firebase 설정을 가져오는 중 오류 발생:", error);
+        }
+    }
+
+    // ✅ Firebase 초기화 실행
+    getFirebaseConfig();
+
+    $(document).ready(function () {
+        const dropBox = $('#dropBox');
+
+        function fileAttach(){
+            dropBox.find('.txt').hide();
+            dropBox.find('.close').show();
+        }
+
+        function fileRemove(){
+            dropBox.find('.txt').show();
+            dropBox.find('.close').hide();
+            dropBox.find('img').remove();
+        }
+
+        $('#btnFile').on('click', function() {
+            $('#fileInput').click();
+        });
+
+        $('#fileInput').on('change', function (event) {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                resizeImage(file, 800, 800, function (blob) {
+                    const storageRef = firebase.storage().ref().child('images/' + file.name);
+                    const uploadTask = storageRef.put(blob);
+
+                    uploadTask.on('state_changed',
+                        function (snapshot) {
+                            // 업로드 진행 상황을 보여줄 수 있음
+                        },
+                        function (error) {
+                            console.error('파일 업로드 중 오류 발생:', error);
+                            alert('파일 업로드 중 오류가 발생했습니다.');
+                        },
+                        function () {
+                            uploadTask.snapshot.ref.getDownloadURL().then(function (downloadURL) {
+                                // 기존에 첨부된 이미지가 있으면 삭제
+                                dropBox.find('img').remove();
+
+                                const img = $('<img>').attr('src', downloadURL);
+                                dropBox.append(img);
+                                fileAttach();
+                            }).catch(function (error) {
+                                console.error('URL 가져오기 중 오류 발생:', error);
+                                alert('이미지 URL을 가져오는 중 오류가 발생했습니다.');
+                            });
+                        }
+                    );
+                });
+            } else {
+                alert('Please select an image file.');
+            }
+        });
+
+        function resizeImage(file, maxWidth, maxHeight, callback) {
+            const img = document.createElement('img');
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                img.src = e.target.result;
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxWidth) {
+                            height = Math.round((height *= maxWidth / width));
+                            width = maxWidth;
+                        }
+                    } else {
+                        if (height > maxHeight) {
+                            width = Math.round((width *= maxHeight / height));
+                            height = maxHeight;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob(callback, 'image/jpeg', 0.8); // 이미지 품질 조정
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        $('.close').on('click', function() {
+            fileRemove();
+        });
+
+
+        dropBox.on('dragover', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).addClass('dragover');
+        });
+
+        dropBox.on('dragleave', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('dragover');
+        });
+
+        dropBox.on('drop', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).removeClass('dragover');
+
+            const files = e.originalEvent.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type.startsWith('image/')) {
+                    const storageRef = storage.ref().child('images/' + file.name);
+                    const uploadTask = storageRef.put(file);
+
+                    uploadTask.on('state_changed',
+                        function(snapshot) {
+                            // 업로드 진행 상황을 보여줄 수 있음
+                            //console.log(snapshot);
+                        },
+                        function(error) {
+                            alert('파일 업로드 중 오류가 발생했습니다.');
+                        },
+                        function() {
+                            uploadTask.snapshot.ref.getDownloadURL().then(function(downloadURL) {
+                                dropBox.append('<img src="' + downloadURL + '" alt="Uploaded Image">');
+                                fileAttach();
+                            });
+
+                        }
+                    );
+
+                } else {
+                    alert('이미지 파일만 드롭해주세요.');
+                }
+            }
+        });
+
+        // 카카오 SDK 초기화
+        Kakao.init('265a9cfab06c546c19fd75effa08fa9a'); // 발급받은 JavaScript 키로 대체
+
+        const linkUrl = 'https://open.kakao.com/o/g99PT8Df';
+
+        // 카카오톡 링크 공유
+        const buttons = [
+            {
+                title: '자세히 보기',
+                link: {
+                    //mobileWebUrl: linkUrl,
+                    //webUrl: linkUrl
+                }
+            }
+        ];
+
+        // 공유하기 버튼 클릭 이벤트
+        $('#btn_share').on('click', function() {
+            // 타이틀과 내용을 가져옴
+            var title = $('#input').val();
+            var description = $('#dynamicTextarea').val();
+
+            // 첨부된 이미지 URL 가져오기
+            var imgSrc = $('#dropBox img').attr('src');
+
+
+
+            // 카카오톡 링크 공유
+            Kakao.Link.sendDefault({
+                objectType: 'feed',
+                content: {
+                    title: title,
+                    description: description,
+                    imageUrl: imgSrc,
+                    link: {
+                        mobileWebUrl: linkUrl,
+                        webUrl: linkUrl
+                    }
+                },
+                buttons: buttons
+            });
+        });
+        // '자세히 보기' 버튼의 title 값을 동적으로 HTML 버튼에 설정
+        $('#dynamicButton').text(buttons[0].title);
+    });
+</script>
+</body>
+</html>
