@@ -28,6 +28,12 @@ button {
   max-width: 420px;
   background: #fff;
 }
+#fileInput {
+  opacity: 0;
+  visibility: hidden;
+  position: absolute;
+  z-index: -1;
+}
 .drop-box {
   width: 100%;
   aspect-ratio: 1/1;
