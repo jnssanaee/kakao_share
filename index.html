@@ -62,9 +62,19 @@
     textarea.addEventListener('input', adjustHeight);
 
     // ✅ Firebase 설정 정보를 백엔드에서 가져오기
+    /*async function getFirebaseConfig() {
+        try {
+            const response = await fetch("/firebase-config");
+            const config = await response.json();
+            firebase.initializeApp(config);
+        } catch (error) {
+            console.error("Firebase 설정을 가져오는 중 오류 발생:", error);
+        }
+    }*/
     async function getFirebaseConfig() {
         try {
-            const response = await fetch("./firebase-config");
+            const response = await fetch("/firebase-config");
+            if (!response.ok) throw new Error("서버 응답 오류");
             const config = await response.json();
             firebase.initializeApp(config);
         } catch (error) {

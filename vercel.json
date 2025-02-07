@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/firebase-config",
+      "destination": "/api/firebase-config"
+    }
+  ]
+}
